@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>EPigeon: Chat</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<link rel="icon" href="logo.jpg">
+	<!--===============================================================================================-->
+	<!-- meyer-reset CSS
+	<link rel='stylesheet' type='text/css' href='/reset.min.css'>
+	font-awesome CSS
+	<link rel='stylesheet' type='text/css' href='/font-awesome.min.css'> -->
+	<!-- Login form CSS 
+	<link rel="stylesheet" type="text/css" href="/login.css">
+	 Core CSS -->
+	<link rel='stylesheet' type='text/css' href='/stylesheet.css'>
+	
+	<!--===============================================================================================-->
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
+ 
+	<script>
+		var sender_id= '<%= user._id %>'; 
+		var receiver_id;
+		var socket = io('/user-namespace', {
+			auth:{
+				token: '<%= user._id %>'
+			}
+		});
+
+		const flag=0;
+
+		$(document).ready(function(){
+			$('.users-list').click(function(){
+				var userId= $(this).attr('data-id');
+				receiver_id= userId;
+				$('.content').show();
+				socket.emit('existsChat', {sender_id: sender_id, receiver_id: receiver_id});
+			});
+		});
+		
+		
+		//Update user online status
+		socket.on('getOnlineUser', function(data){
+			$('#'+data.user_id+'-status').text('Online');
+			$('#'+data.user_id+'-status').removeClass('offline-status');
+			$('#'+data.user_id+'-status').addClass('online-status');
+		});
+
+		//Update user offline status
+		socket.on('getOfflineUser', function(data){
+			$('#'+data.user_id+'-status').text('Offline');
+			$('#'+data.user_id+'-status').addClass('offline-status'); 
+			$('#'+data.user_id+'-status').removeClass('online-status');
+			
+		//Chat save of User
+		$('#chat-room').submit(function(event){
+			event.preventDefault();
+
+			var message= $('#message').val();
+			$.ajax({
+				url:'/save-chat',
+				type:'POST',
+				data:{ sender_id: sender_id, receiver_id: receiver_id, message: message},
+				success:function(data){
+					if(data.success){
+						$('#message').val('');
+						const chat = data.data.message;
+						//console.log("Hello 1"+chat);
+						let html = `<div class="sent"><p>`+chat+`</p></div>`;
+						$('#messages').append(html);
+						socket.emit('newChat', data.data);
+						scrollChat();
+					}
+					else{
+						alert(data.msg);
+					}
+				}
+			});
+		})
+		});
+		//Load New Chats
+		socket.on('loadNewChat', function(data){
+
+			if(sender_id==data.receiver_id && receiver_id==data.sender_id){
+			//console.log("Hello 2"+data.message);
+			let html = `
+			<div class="replies">
+				<p>`+data.message+`</p>
+			</div>
+			`;
+			$('#messages').append(html);
+			}
+		});
+
+		//Load Old Chats
+		socket.on('loadChats', function(allchats){
+			$(`#messages`).html('');
+
+			var chats= allchats.chats1;
+
+			let html='';
+
+			for(let x=0; x < chats.length; x++){
+				let addClass = '';
+				if(chats[x]['sender_id'] == sender_id){
+					addClass= 'sent';
+				}
+				else{
+					addClass= 'replies';
+				}
+				//console.log("Hello 3 "+chats[x]["message"]);
+				html = `<div class= '`+addClass+`'><p>`+chats[x]["message"]+`</p></div>`;
+				$('#messages').append(html);
+				scrollChat();
+			}
+		}
+		);
+
+		function scrollChat(){
+			$('#messages').animate({
+				scrollTop:$('#messages').offset().top + $('#messages')[0].scrollHeight},0.5);
+			}
+
+	</script>
+</head>
+ 
+<body>
+
+	<!-- Chat Section -->
+	<div id="frame" >
+		<div id="sidepanel">
+			<div id="profile">
+				<div class="wrap">
+					<img id="profile-img" src="/unnamed.png" class="online" />
+					<p id="myUsername"><%= user.fullName %></p>
+					<i class="fa fa-chevron-down expand-button" aria-hidden="true"></i>
+					<div id="expanded">
+						<label for="email">
+							<i class="fa fa-at" aria-hidden="true"></i>
+						</label>
+						<input id="myEmail" name="email" type="text" value="email@provider.com" /><h2>{{user.email}}</h2>
+					</div>
+				</div>
+			</div>
+			<div id="search">
+				<label for="">
+					<i class="fa fa-search" aria-hidden="true"><img src="/search1.jpg"  width="35px" height="36px"/></i>
+				</label>
+				<input type="text" placeholder="Search contacts...">
+			</div>
+			<div id="contacts">
+					<ul id="list-group" style="margin-top: 10px;"> 
+					<% if(users.length > 0) { %>
+					  <% for(let i=0; i < users.length; i++) { %>
+						<li class="list-group-item list-group-item-dark cursor-pointer users-list" data-id="<%= users[i]['_id'] %>">
+							<i class="fa fa-search" aria-hidden="true"><img src="/unnamed.png" style="margin-top: 9px; margin-right: 8px;" width="40px" height="40px"/></i>
+							<%= users[i]['fullName'] %>
+
+					<% 
+					if(users[i]['isOnline'] == 1){
+						%>
+						<sup class="online-status" style="color: rgb(49, 212, 49);" id="<%= users[i]['_id'] %>"> Online</sup>
+						<%
+					}
+					else{
+						%>
+						<sup class="offline-status" style="color: red;" id="<%= users[i]['_id'] %>"> Offline</sup>
+						<%
+					}
+					%>
+					 </li>
+					 <% } %>
+					<% } %>
+				</ul>
+
+				<ul id="channelContacts"></ul>
+			</div>
+			<div id="bottom-bar">
+				<button id="addchannel">
+					<a href="/logout" ><span style="color:white; margin:5px;">Add Group</span></a>
+				</button>
+				<button id="settings">
+					<a href="/logout" ><span style="color:white; margin:5px;">Settings</span></a>
+				</button>
+			</div>
+		</div>
+		<div class="content">
+			<div class="contact-profile">
+				<img id="channel-profile-img" src="/unnamed.png" />
+				
+				<p id="channel-profile-name">
+				
+				</p>
+				
+				<span id="channel-user-typing">is typing...</span>
+			</div>
+			<div id="messages">
+				
+			</div>
+			<div class="message-input">
+				<div class="wrap">
+					<form action="" id="chat-room">
+						<input type="text" required placeholder="Write your message..." id="message"/>
+						<i class="fa fa-paperclip attachment" aria-hidden="true">
+							<img src="/attach.png" width="43px" height="40px" >
+						</i>
+						<input type="submit" value="Send" class="btn btn-primary">
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+
+</html>
+
+

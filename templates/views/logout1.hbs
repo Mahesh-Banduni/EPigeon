@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPigeon: Logout</title>
+    <link rel="stylesheet" href="/style4.css">
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+ </style>
+<script type="text/javascript"> 
+        window.history.forward(); 
+        function noBack() { 
+            window.history.forward(); 
+        } 
+    </script>
+
+<!--
+<script type="text/javascript"> 
+        function preventBack() { 
+            window.history.forward();  
+        }
+        setTimeout("preventBack()", 0);
+        window.onunload = function () { null }; 
+    </script> 
+  </script>
+  
+  
+ 
+    <script type = "text/javascript" >  
+    function preventBack() { window.history.forward(); }  
+    setTimeout("preventBack()", 0);  
+    window.onunload = function () { null };  
+</script> 
+-->
+</head>
+<body>
+  <!-- <% if (locals.fileLink != null) { %>
+    <div style="margin-bottom: 1rem;">
+      Your File is Uploaded
+      <a href ="<%= locals.fileLink %>"><%= locals.fileLink %></a>
+    </div>
+  <%> } %> -->
+  <div class="container">
+    <div class="card">
+      <div class="drop_box">
+          <header>
+          </header>
+          <h4><br> You have logged out successfully</h4><br>
+          <form action="/">
+            <button class="btn">Return to Login Page</button><br>
+          </form>
+      </div>
+  
+    </div>
+  </div>
+  
+
+</body>
+
+</html>
