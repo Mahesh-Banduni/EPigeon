@@ -17,5 +17,6 @@ Technology Stack
 * Database: MongoDB
 * Encryption Algorithm:- AES-256
 
+Screenshots
 
-![Uploading image.png…]()
+Registration Page: ![registration](https://github.com/MAHESHBANDUNI/EPigeon/assets/114943739/835137fb-ade7-443a-9080-1b8bcb73e7f6)
