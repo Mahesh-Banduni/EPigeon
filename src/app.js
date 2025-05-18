@@ -38,54 +38,65 @@ mongoose.connect(process.env.DATABASE, {
 })
 
 
-/////// Socket handling
-var usp = io.of('/user-namespace');
+/// Socket.IO User Namespace
+/// Socket.IO User Namespace
+const usp = io.of('/user-namespace');
 
-usp.on('connection', async function(socket){
-    var userId= socket.handshake.auth.token;
-    const UserData =await Users.findOne({_id:userId});
-    console.log("User Connected: "+ UserData.fullName);
+usp.on('connection', async (socket) => {
+    const userId = socket.handshake.auth.token;
 
-    await Users.findByIdAndUpdate({_id : userId}, { $set:{ isOnline:'1'}});
+    try {
+        const user = await Users.findById(userId);
+        console.log("User Connected:", user.fullName);
 
-    //User Online Status Broadcast
-    socket.broadcast.emit('getOnlineUser', { user_id : userId});
+        // Mark user online
+        await Users.findByIdAndUpdate(userId, { $set: { isOnline: '1' } });
 
-    socket.on('disconnect', async function(){
+        // Broadcast online status
+        socket.broadcast.emit('getOnlineUser', { user_id: userId });
 
-        var userId= socket.handshake.auth.token;
-        const UserData1 =await Users.findOne({_id:userId});
-         console.log("User Disconnected: "+ UserData1.fullName);
-
-        await Users.findByIdAndUpdate({_id : userId}, { $set:{ isOnline:'0'}});
-
-        //User Offline Status Broadcast
-        socket.broadcast.emit('getOfflineUser', {user_id: userId});
-
-    });
-    
-    //Chatting Implementation
-    socket.on('newChat', function(data){
-        socket.broadcast.emit('loadNewChat', data);});
-    
-
-    //Load OLd Chats
-    socket.on('existsChat', async function(data){
-        var chats1 = await Chats.find({$or:[
-            {sender_id: data.sender_id, receiver_id: data.receiver_id},
-            {sender_id: data.receiver_id, receiver_id: data.sender_id},
-        ]});
-
-        for(let i=0; i< chats1.length; i++)
-        {
-          //console.log("Upper:   "+encryptdecrypt.decrypt(chats1[i]['message']));
-          chats1[i]['message']= encryptdecrypt.decrypt(chats1[i]['message']);  
-        }
-        console.log(chats1.length);
-        socket.emit('loadChats', {chats1: chats1});
+        // Typing status
+        socket.on('typing', (data) => {
+            socket.broadcast.emit('userTyping', data);
         });
-});
 
+        // Load chat between two users
+        socket.on('existsChat', async (data) => {
+            const chats = await Chats.find({
+                $or: [
+                    { sender_id: data.sender_id, receiver_id: data.receiver_id },
+                    { sender_id: data.receiver_id, receiver_id: data.sender_id }
+                ]
+            }).sort({ createdAt: 1 });
+
+            // Decrypt messages
+            chats.forEach(chat => {
+                chat.message = encryptdecrypt.decrypt(chat.message);
+            });
+
+            socket.emit('loadChats', { chats1: chats });
+        });
+
+        // New chat message
+        socket.on('newChat', (data) => {
+            socket.broadcast.emit('loadNewChat', data);
+        });
+
+        // On disconnect
+        socket.on('disconnect', async () => {
+            const userData = await Users.findById(userId);
+            console.log("User Disconnected:", userData.fullName);
+
+            await Users.findByIdAndUpdate(userId, { $set: { isOnline: '0' } });
+
+            // Broadcast offline status
+            socket.broadcast.emit('getOfflineUser', { user_id: userId });
+        });
+
+    } catch (err) {
+        console.error("Socket error:", err.message);
+    }
+});
 
  //Routes to different web pages
  
@@ -140,10 +151,9 @@ app.post("/login",   [
         const userdecpass = encryptdecrypt.decrypt(userData.password);
         
         const token= await userData.generateAuthToken();
-        console.log(token);
 
         res.cookie("jwt", token, {
-            expires: new Date(Date.now() + 600000),
+            expires: new Date(Date.now() + 1800000), //30 minutes
             httpOnly:true,
         });
 
@@ -224,36 +234,30 @@ app.post("/otp", auth, async(req, res) => {
     res.redirect("/chat");
 })
 
-app.get("/chat", auth, async(req, res) => {
-    try{
-    var users = await Users.find({ _id: { $nin:[req.user._id] } });
-    res.render("chat.ejs", {user: req.user, users: users});
-    }
-    catch(error){
-        console.log(error.message);
+app.get("/chat", auth, async (req, res) => {
+    try {
+        const users = await Users.find({ _id: { $nin: [req.user._id] } });
+        res.render("chat.ejs", { user: req.user, users });
+    } catch (error) {
+        console.log("Chat page error:", error.message);
+        res.status(500).send("Internal Server Error");
     }
 });
 
-app.post("/save-chat", async(req, res) =>{
+// Save new chat message
+app.post("/save-chat", async (req, res) => {
     try {
-        var text = req.body.message;
-        const encmessage= encryptdecrypt.encrypt(text);
-        var chat= new Chats({
-            sender_id: req.body.sender_id,
-            receiver_id: req.body.receiver_id,
-            message: encmessage
-        });
-        console.log("ID:"+chat._id);
+        const { sender_id, receiver_id, message } = req.body;
+        const encMessage = encryptdecrypt.encrypt(message);
 
-        var newChat= await chat.save();
-        var nnChat= newChat;
-        nnChat.message= encryptdecrypt.decrypt(newChat.message);
-        //console.log(nnChat.message);
+        const chat = new Chats({ sender_id, receiver_id, message: encMessage });
+        const savedChat = await chat.save();
 
-        res.status(200).send({success:true, msg:'Chat inserted!', data:newChat});
+        savedChat.message = encryptdecrypt.decrypt(savedChat.message);
 
+        res.status(200).send({ success: true, msg: 'Chat inserted!', data: savedChat });
     } catch (error) {
-        res.status(400).send({success:false, msg:error.message});
+        res.status(400).send({ success: false, msg: error.message });
     }
 });
 
