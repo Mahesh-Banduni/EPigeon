@@ -25,7 +25,7 @@ EPigeon is a chat and messaging web application, that mitigates the risks of dat
 ![registration](https://github.com/MAHESHBANDUNI/EPigeon/assets/114943739/835137fb-ade7-443a-9080-1b8bcb73e7f6)
 
 ### Login Page:
-![image](https://github.com/user-attachments/assets/24196511-7515-4cb7-9734-f0fe181d77a0)
+![image](https://github.com/user-attachments/assets/782038b0-af54-4d09-add6-096b63c714b7)
 
 ### Chat Dashboard:
 ![image](https://github.com/user-attachments/assets/b2d8c65f-0d79-4283-99de-c80cc51b69df)
