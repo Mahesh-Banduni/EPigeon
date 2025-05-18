@@ -2,19 +2,13 @@
 <html>
 
 <head>
-	<title>EPigeon: Chat</title>
+	<title>Secure Chat: Chat</title>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<link rel="icon" href="logo.jpg">
 	<!--===============================================================================================-->
-	<!-- meyer-reset CSS
-	<link rel='stylesheet' type='text/css' href='/reset.min.css'>
-	font-awesome CSS
-	<link rel='stylesheet' type='text/css' href='/font-awesome.min.css'> -->
-	<!-- Login form CSS 
-	<link rel="stylesheet" type="text/css" href="/login.css">
-	 Core CSS -->
+	<!-- Core CSS -->
 	<link rel='stylesheet' type='text/css' href='/stylesheet.css'>
 	
 	<!--===============================================================================================-->
@@ -22,115 +16,201 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
  
 	<script>
-		var sender_id= '<%= user._id %>'; 
-		var receiver_id;
-		var socket = io('/user-namespace', {
-			auth:{
-				token: '<%= user._id %>'
+	var sender_id = '<%= user._id %>';
+	var receiver_id;
+
+	var socket = io('/user-namespace', {
+		auth: { token: sender_id }
+	});
+
+	$(document).ready(function () {
+		$('#toggle-sidebar').click(function () {
+			$('#sidepanel').toggleClass('show-sidebar');
+			$('.content').toggleClass('content-shifted');
+		});
+
+		$('.users-list').click(function () {
+			receiver_id = $(this).attr('data-id');
+			var userName = $(this).find('.user-name').text();
+			var userStatus = $(this).find('.user-status').text();
+
+			$('#channel-profile-name').text(userName);
+			$('#contact-status-indicator').text(userStatus)
+				.removeClass('online-status offline-status')
+				.addClass(userStatus.trim() === 'Online' ? 'online-status' : 'offline-status');
+
+			if ($(window).width() <= 768) {
+				$('#sidepanel').removeClass('show-sidebar');
+				$('.content').removeClass('content-shifted');
 			}
+
+			$('.content').show();
+			socket.emit('existsChat', { sender_id, receiver_id });
+
+			$('.users-list').removeClass('active');
+			$(this).addClass('active');
 		});
 
-		const flag=0;
-
-		$(document).ready(function(){
-			$('.users-list').click(function(){
-				var userId= $(this).attr('data-id');
-				receiver_id= userId;
-				$('.content').show();
-				socket.emit('existsChat', {sender_id: sender_id, receiver_id: receiver_id});
-			});
-		});
-		
-		
-		//Update user online status
-		socket.on('getOnlineUser', function(data){
-			$('#'+data.user_id+'-status').text('Online');
-			$('#'+data.user_id+'-status').removeClass('offline-status');
-			$('#'+data.user_id+'-status').addClass('online-status');
-		});
-
-		//Update user offline status
-		socket.on('getOfflineUser', function(data){
-			$('#'+data.user_id+'-status').text('Offline');
-			$('#'+data.user_id+'-status').addClass('offline-status'); 
-			$('#'+data.user_id+'-status').removeClass('online-status');
-			
-		//Chat save of User
 		$('#chat-room').submit(function(event){
 			event.preventDefault();
 
-			var message= $('#message').val();
+			var message = $('#message').val().trim();
+			if (!message) {
+				console.log("Empty message, not sending.");
+				return;
+			}
+		
+			console.log("Sending message:", message);
+		
 			$.ajax({
-				url:'/save-chat',
-				type:'POST',
-				data:{ sender_id: sender_id, receiver_id: receiver_id, message: message},
-				success:function(data){
+				url: '/save-chat',
+				type: 'POST',
+				data: {
+					sender_id: sender_id,
+					receiver_id: receiver_id,
+					message: message
+				},
+				success: function(data) {
+					console.log("Server response:", data);
 					if(data.success){
 						$('#message').val('');
-						const chat = data.data.message;
-						//console.log("Hello 1"+chat);
-						let html = `<div class="sent"><p>`+chat+`</p></div>`;
-						$('#messages').append(html);
+						appendMessage('sent', data.data.message);
 						socket.emit('newChat', data.data);
 						scrollChat();
-					}
-					else{
+					} else {
 						alert(data.msg);
 					}
+				},
+				error: function(xhr, status, error) {
+					console.error("AJAX error:", status, error);
+					alert("Could not send message. Try again.");
 				}
 			});
-		})
-		});
-		//Load New Chats
-		socket.on('loadNewChat', function(data){
-
-			if(sender_id==data.receiver_id && receiver_id==data.sender_id){
-			//console.log("Hello 2"+data.message);
-			let html = `
-			<div class="replies">
-				<p>`+data.message+`</p>
-			</div>
-			`;
-			$('#messages').append(html);
-			}
 		});
 
-		//Load Old Chats
-		socket.on('loadChats', function(allchats){
-			$(`#messages`).html('');
-
-			var chats= allchats.chats1;
-
-			let html='';
-
-			for(let x=0; x < chats.length; x++){
-				let addClass = '';
-				if(chats[x]['sender_id'] == sender_id){
-					addClass= 'sent';
-				}
-				else{
-					addClass= 'replies';
-				}
-				//console.log("Hello 3 "+chats[x]["message"]);
-				html = `<div class= '`+addClass+`'><p>`+chats[x]["message"]+`</p></div>`;
-				$('#messages').append(html);
-				scrollChat();
+		// Debounce helper function
+		function debounce(func, wait) {		
+			  let timeout;
+			  return function(...args) {
+			    clearTimeout(timeout);
+			    timeout = setTimeout(() => func.apply(this, args), wait);
+			  };
 			}
+
+		$('#search-input').on('keyup', debounce(function () {
+		    const value = $(this).val().toLowerCase();
+		
+		    $('.users-list').each(function () {
+		        const userNameElem = $(this).find('.user-name');
+		        const userName = userNameElem.text();
+		        const userNameLower = userName.toLowerCase();
+			
+		        if (userNameLower.indexOf(value) > -1) {
+		            $(this).show();
+				
+		            // Highlight matched text
+		            if(value.length > 0) {
+		                const regex = new RegExp(`(${value})`, 'gi');
+		                const highlighted = userName.replace(regex, '<mark>$1</mark>');
+		                userNameElem.html(highlighted);
+		            } else {
+		                // Remove highlights if no search value
+		                userNameElem.text(userName);
+		            }
+		        } else {
+		            $(this).hide();
+		            // Remove highlight as it's hidden
+		            userNameElem.text(userName);
+		        }
+		    });
+		}, 300));
+
+
+	});
+
+	socket.on('getOnlineUser', function (data) {
+		updateStatus(data.user_id, true);
+	});
+
+	socket.on('getOfflineUser', function (data) {
+		updateStatus(data.user_id, false);
+	});
+
+	function updateStatus(userId, isOnline) {
+		const statusText = isOnline ? 'Online' : 'Offline';
+		const classToAdd = isOnline ? 'online-status' : 'offline-status';
+		const classToRemove = isOnline ? 'offline-status' : 'online-status';
+
+		$('#' + userId + '-status').text(statusText)
+			.removeClass(classToRemove)
+			.addClass(classToAdd);
+
+		if (userId === receiver_id) {
+			$('#contact-status-indicator').text(statusText)
+				.removeClass(classToRemove)
+				.addClass(classToAdd);
 		}
-		);
+	}
 
-		function scrollChat(){
-			$('#messages').animate({
-				scrollTop:$('#messages').offset().top + $('#messages')[0].scrollHeight},0.5);
-			}
 
-	</script>
+	$('#message').focus(function () {
+		socket.emit('typing', { sender_id, receiver_id, typing: true });
+	}).blur(function () {
+		socket.emit('typing', { sender_id, receiver_id, typing: false });
+	});
+
+	socket.on('userTyping', function (data) {
+		if (sender_id === data.receiver_id && receiver_id === data.sender_id) {
+			$('#channel-user-typing').toggle(data.typing);
+		}
+	});
+
+	socket.on('loadNewChat', function (data) {
+		if (sender_id === data.receiver_id && receiver_id === data.sender_id) {
+			appendMessage('replies', data.message);
+			scrollChat();
+		}
+	});
+
+	socket.on('loadChats', function (allchats) {
+		$('#messages').empty();
+		const chats = allchats.chats1;
+		for (const chat of chats) {
+			const className = chat.sender_id === sender_id ? 'sent' : 'replies';
+			appendMessage(className, chat.message);
+		}
+		scrollChat();
+	});
+
+	function appendMessage(type, message) {
+		const html = `<div class="${type}"><p>${message}</p></div>`;
+		$('#messages').append(html);
+	}
+
+	function scrollChat() {
+		$('#messages').animate({
+			scrollTop: $('#messages')[0].scrollHeight
+		}, 100);
+	}		
+
+	$(window).resize(function () {
+		if ($(window).width() > 768) {
+			$('#sidepanel').removeClass('show-sidebar');
+			$('.content').removeClass('content-shifted');
+		}
+	});
+</script>
+
 </head>
  
 <body>
-
 	<!-- Chat Section -->
-	<div id="frame" >
+	<div id="frame">
+		<!-- Mobile Toggle Button -->
+		<div id="toggle-sidebar" class="mobile-toggle">
+			<span>☰</span>
+		</div>
+		
 		<div id="sidepanel">
 			<div id="profile">
 				<div class="wrap">
@@ -141,72 +221,68 @@
 						<label for="email">
 							<i class="fa fa-at" aria-hidden="true"></i>
 						</label>
-						<input id="myEmail" name="email" type="text" value="email@provider.com" /><h2>{{user.email}}</h2>
+						<input id="myEmail" name="email" type="text" value="email@provider.com" readonly />
+						<h2><%= user.email %></h2>
 					</div>
 				</div>
 			</div>
 			<div id="search">
-				<label for="">
-					<i class="fa fa-search" aria-hidden="true"><img src="/search1.jpg"  width="35px" height="36px"/></i>
+				<label for="search-input">
+					<img src="/search1.jpg" width="35px" height="36px" alt="Search"/>
 				</label>
-				<input type="text" placeholder="Search contacts...">
+				<input type="text" id="search-input" placeholder="Search contacts...">
 			</div>
 			<div id="contacts">
-					<ul id="list-group" style="margin-top: 10px;"> 
+				<ul id="list-group" style="margin-top: 10px;"> 
 					<% if(users.length > 0) { %>
-					  <% for(let i=0; i < users.length; i++) { %>
-						<li class="list-group-item list-group-item-dark cursor-pointer users-list" data-id="<%= users[i]['_id'] %>">
-							<i class="fa fa-search" aria-hidden="true"><img src="/unnamed.png" style="margin-top: 9px; margin-right: 8px;" width="40px" height="40px"/></i>
-							<%= users[i]['fullName'] %>
-
-					<% 
-					if(users[i]['isOnline'] == 1){
-						%>
-						<sup class="online-status" style="color: rgb(49, 212, 49);" id="<%= users[i]['_id'] %>"> Online</sup>
-						<%
-					}
-					else{
-						%>
-						<sup class="offline-status" style="color: red;" id="<%= users[i]['_id'] %>"> Offline</sup>
-						<%
-					}
-					%>
-					 </li>
-					 <% } %>
+						<% for(let i=0; i < users.length; i++) { %>
+							<li class="list-group-item list-group-item-dark cursor-pointer users-list" data-id="<%= users[i]['_id'] %>">
+								<img src="/unnamed.png" class="contact-avatar" alt="User Avatar" />
+								<div class="user-info">
+									<span class="user-name"><%= users[i]['fullName'] %></span>
+									<% if(users[i]['isOnline'] == 1) { %>
+										<span class="user-status online-status" id="<%= users[i]['_id'] %>-status">Online</span>
+									<% } else { %>
+										<span class="user-status offline-status" id="<%= users[i]['_id'] %>-status">Offline</span>
+									<% } %>
+								</div>
+							</li>
+						<% } %>
+					<% } else { %>
+						<li class="no-contacts">No contacts available</li>
 					<% } %>
 				</ul>
-
 				<ul id="channelContacts"></ul>
 			</div>
 			<div id="bottom-bar">
 				<button id="addchannel">
-					<a href="/logout" ><span style="color:white; margin:5px;">Add Group</span></a>
+					<span>Add Group</span>
 				</button>
 				<button id="settings">
-					<a href="/logout" ><span style="color:white; margin:5px;">Settings</span></a>
+					<span>Settings</span>
 				</button>
 			</div>
 		</div>
+		
 		<div class="content">
 			<div class="contact-profile">
-				<img id="channel-profile-img" src="/unnamed.png" />
-				
-				<p id="channel-profile-name">
-				
-				</p>
-				
+				<img id="channel-profile-img" src="/unnamed.png" alt="Contact Profile" />
+				<div class="contact-info">
+					<p id="channel-profile-name"></p>
+					<span id="contact-status-indicator"></span>
+				</div>
 				<span id="channel-user-typing">is typing...</span>
 			</div>
 			<div id="messages">
-				
+				<!-- Messages will be loaded here -->
 			</div>
 			<div class="message-input">
 				<div class="wrap">
 					<form action="" id="chat-room">
 						<input type="text" required placeholder="Write your message..." id="message"/>
-						<i class="fa fa-paperclip attachment" aria-hidden="true">
-							<img src="/attach.png" width="43px" height="40px" >
-						</i>
+						<!-- <i class="attachment">
+							<img src="/attach.png" width="35px" height="35px" alt="Attachment">
+						</i> -->
 						<input type="submit" value="Send" class="btn btn-primary">
 					</form>
 				</div>
@@ -216,5 +292,3 @@
 </body>
 
 </html>
-
-
