@@ -326,7 +326,6 @@ app.get("/unnamed.png", (req, res) => {
     res.sendFile(path.join(__dirname, "/public/images/unnamed.png"));
 });
 
-
 //Models
 const Users = require("./models/Register.js");
 const Chats = require("./models/UserChat.js");
