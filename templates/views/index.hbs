@@ -6,71 +6,116 @@
    <link rel="icon" href="/logo.jpg">
    <title>Secure Chat: Welcome</title>
    <link rel="stylesheet" href="/style1.css">
-   <style>
-	
-@import url('https://fonts.googleapis.com/css?family=Montserrat:400,800');
-   </style>
 </head>
 <body>
    <h2>Secure Chat</h2>
-<div class="container" id="container">
-	<div class="form-container sign-up-container">
-		<form name="form1" action="/register" method="post" onsubmit="return validateForm()">
-			 
-			<h2>Create Account</h2>
-			<div class="social-container">
-				<a href="#" class="social"><img src="/logo.jpg" alt="icon" height="40px"></a>
-			</div>
-			<input type="text" placeholder="Name" required name="fullName"/>
-			<input type="email" placeholder="Email" required name="email"/>
-			<input type="tel" placeholder="Phone Number" required name="phone"/>
-			<input type="password" placeholder="Password" required name="password"/><br>
-			<button input type="submit" name="submit" value="Submit"> Sign Up</button>
-		</form>
-	</div>
-	<div class="form-container sign-in-container">
-		<form name="form2" action="/login" method="post">
-			<h1>Sign in</h1>
-			<div class="social-container">
-				<a href="#" class="social"><img src="/logo.jpg" alt="icon" height="40px"></a>
-			</div>
-			<input type="email" placeholder="Email" required name="email"/>
-			<input type="password" placeholder="Password" required name="password"/>
-			<a href="#">Forgot your password?</a>
-			<button input type="submit" name="submit" value="Submit">Sign In</button><br>
-		</form>
-	</div>
-	<div class="overlay-container">
-		<div class="overlay">
-			<div class="overlay-panel overlay-left">
-				<h1>Welcome Back!</h1>
-				<p>To keep connected securely with your friends</p>
-				<button class="ghost" id="signIn">Sign In</button>
-			</div>
-			<div class="overlay-panel overlay-right">
-				<h1>Welcome to Secure Chat</h1>
-				<p>Let's create a account and connect in securely with your friends</p>
-				<button class="ghost" id="signUp">Sign Up</button>
-			</div>
-		</div>
-	</div>
-</div>
 
+   <!-- Mobile navigation - only visible on small screens -->
+   <div class="mobile-nav">
+      <button id="mobileSignIn" class="active">Sign In</button>
+      <button id="mobileSignUp">Sign Up</button>
+   </div>
 
-<script>
-	const signUpButton = document.getElementById('signUp');
-const signInButton = document.getElementById('signIn');
-const container = document.getElementById('container');
+   <div class="container" id="container">
+      <div class="form-container sign-up-container">
+         <form name="form1" action="/register" method="post" onsubmit="return validateForm()">
+            <h2>Create Account</h2>
+            <div class="social-container">
+               <a href="#" class="social"><img src="/logo.jpg" alt="icon" height="40px"></a>
+            </div>
+            <input type="text" placeholder="Name" required name="fullName"/>
+            <input type="email" placeholder="Email" required name="email"/>
+            <input type="tel" placeholder="Phone Number" required name="phone"/>
+            <input type="password" placeholder="Password" required name="password"/><br>
+            <button type="submit" name="submit" value="Submit">Sign Up</button>
+         </form>
+      </div>
+      <div class="form-container sign-in-container">
+         <form name="form2" action="/login" method="post">
+            <h1>Sign in</h1>
+            <div class="social-container">
+               <a href="#" class="social"><img src="/logo.jpg" alt="icon" height="40px"></a>
+            </div>
+            <input type="email" placeholder="Email" required name="email"/>
+            <input type="password" placeholder="Password" required name="password"/>
+            <a href="#">Forgot your password?</a>
+            <button type="submit" name="submit" value="Submit">Sign In</button><br>
+         </form>
+      </div>
+      <div class="overlay-container">
+         <div class="overlay">
+            <div class="overlay-panel overlay-left">
+               <h1>Welcome Back!</h1>
+               <p>To keep connected securely with your friends</p>
+               <button class="ghost" id="signIn">Sign In</button>
+            </div>
+            <div class="overlay-panel overlay-right">
+               <h1>Welcome to Secure Chat</h1>
+               <p>Let's create a account and connect in securely with your friends</p>
+               <button class="ghost" id="signUp">Sign Up</button>
+            </div>
+         </div>
+      </div>
+   </div>
 
-signUpButton.addEventListener('click', () => {
-	container.classList.add("right-panel-active");
-});
+   <script>
+      const signUpButton = document.getElementById('signUp');
+      const signInButton = document.getElementById('signIn');
+      const mobileSignUpButton = document.getElementById('mobileSignUp');
+      const mobileSignInButton = document.getElementById('mobileSignIn');
+      const container = document.getElementById('container');
 
-signInButton.addEventListener('click', () => {
-	container.classList.remove("right-panel-active");
-});
+      // Desktop version
+      signUpButton.addEventListener('click', () => {
+         container.classList.add("right-panel-active");
+      });
 
-</script>
+      signInButton.addEventListener('click', () => {
+         container.classList.remove("right-panel-active");
+      });
 
+      // Mobile version
+      mobileSignUpButton.addEventListener('click', () => {
+         document.querySelector('.sign-up-container').style.opacity = '1';
+         document.querySelector('.sign-up-container').style.zIndex = '5';
+         document.querySelector('.sign-in-container').style.opacity = '0';
+         document.querySelector('.sign-in-container').style.zIndex = '1';
+         mobileSignUpButton.classList.add('active');
+         mobileSignInButton.classList.remove('active');
+      });
+
+      mobileSignInButton.addEventListener('click', () => {
+         document.querySelector('.sign-up-container').style.opacity = '0';
+         document.querySelector('.sign-up-container').style.zIndex = '1';
+         document.querySelector('.sign-in-container').style.opacity = '1';
+         document.querySelector('.sign-in-container').style.zIndex = '5';
+         mobileSignInButton.classList.add('active');
+         mobileSignUpButton.classList.remove('active');
+      });
+
+      // Check screen size on load and resize
+      function checkScreenSize() {
+         if (window.innerWidth <= 768) {
+            // Reset any desktop-specific styles when in mobile view
+            container.classList.remove("right-panel-active");
+            
+            // Default to sign-in form on mobile
+            document.querySelector('.sign-in-container').style.opacity = '1';
+            document.querySelector('.sign-in-container').style.zIndex = '5';
+            document.querySelector('.sign-up-container').style.opacity = '0';
+            document.querySelector('.sign-up-container').style.zIndex = '1';
+         } else {
+            // Reset any mobile-specific styles when in desktop view
+            document.querySelector('.sign-in-container').style = '';
+            document.querySelector('.sign-up-container').style = '';
+         }
+      }
+
+      // Run on page load
+      checkScreenSize();
+
+      // Run on window resize
+      window.addEventListener('resize', checkScreenSize);
+   </script>
 </body>
 </html>
